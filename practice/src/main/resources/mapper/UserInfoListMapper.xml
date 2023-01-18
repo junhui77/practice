@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  <mapper namespace="listAll">
+  	<resultMap type="all" id="all">
+		<result column="USER_IDX" property="userIdx"/>
+		<result column="USER_NAME" property="userName"/>
+		<result column="USER_COMP" property="userComp"/>
+		<result column="USER_DEPT" property="userDept"/>
+		<result column="USER_SEX" property="userSex"/>
+		<result column="CAREER_DATE" property="careerDate"/>
+		<result column="USER_REGISTER_DATE" property="userRegisterDate"/>
+	</resultMap>
+  
+ 
+  
+ <select id="listSelect" resultType="all" parameterType="hashmap">
+	SELECT * FROM
+		(SELECT ROWNUM AS RN, a.*
+		FROM (SELECT 
+			    u.user_idx as userIdx,
+			    u.user_name as userName,
+			    u.user_comp as userComp,
+			    u.user_dept as userDept,
+			    u.user_sex as userSex,
+			    c.career_date as careerDate,
+			    u.user_register_date as userRegisterDate
+			FROM
+			    user_info u 
+			    JOIN 
+			    (select 
+			    
+			        user_idx
+			        ,round(abs(sum((nvl(trunc(skill_startdate),sysdate) - nvl(trunc(skill_enddate),sysdate))/365))) as career_date
+			    from user_info_skill group by user_idx) c
+			    ON u.user_idx = c.user_idx
+			    
+			    <include refid="userListWhere"/>
+			    
+			ORDER BY c.user_idx DESC)A )
+		<![CDATA[
+		   WHERE RN BETWEEN (#{criteria.page} - 1) * #{criteria.perPageNum} + 1 AND #{criteria.page} * #{criteria.perPageNum}
+		]]>
+	</select>
+	
+	<!-- 주민등록번호를 제외한 유저정보 조회 -->
+	 <select id="detailList" resultType="all" parameterType="hashmap">	
+		SELECT user_idx as userIdx
+			, user_register_date
+			, user_name as userName
+			, user_sex
+			, user_comp
+			, to_char(user_comp_enterdate,'yyyy-mm-dd') as user_comp_enterdate
+			, user_dept
+			, user_spot
+			, user_army_serv
+			, user_marital_status
+			, to_char(user_army_serv_enter, 'yyyy-mm-dd') as user_army_serv_enter
+			, to_char(user_army_serv_leave, 'yyyy-mm-dd') as user_army_serv_leave
+			, user_army_serv_period
+			, user_telnum_wired
+			, user_telnum_wireless
+			, user_email
+			, user_zipcode
+			, user_address
+		FROM user_info
+		WHERE
+			user_idx = #{userIdx}
+	</select>
+	
+	<!-- 페이지 개수  -->
+	<select id="UserCount" resultType="int">
+		SELECT 
+			COUNT(DISTINCT u.user_idx)
+		FROM 
+			user_info u
+		LEFT OUTER JOIN 
+			user_info_skill s
+		ON u.user_idx=s.user_idx
+			LEFT OUTER JOIN 
+				(select 
+					user_idx
+					,round(abs(sum((nvl(trunc(skill_startdate),sysdate) - nvl(trunc(skill_enddate),sysdate))/365))) as career_date
+				from user_info_skill group by user_idx) c        
+	 		ON s.user_idx=c.user_idx
+	 		
+	 		<include refid="userListWhere"/>
+	</select>
+	 
+	<delete id="UserDelete" parameterType="int">
+		DELETE FROM user_info
+		WHERE user_idx = #{userIdx}
+	</delete>
+	
+	<delete id="UserBodyDelete" parameterType="int"> 
+		DELETE FROM user_info_body
+		WHERE user_idx = #{userIdx}
+	</delete>
+	
+	<delete id="UserCareerDelete" parameterType="int">
+		DELETE FROM user_info_career
+		WHERE user_idx = #{userIdx}
+	</delete>
+	
+	<delete id="UserEduDelete" parameterType="int">
+		DELETE FROM user_info_edu
+		WHERE user_idx = #{userIdx}
+	</delete>
+	
+	<delete id="UserLicenDelete" parameterType="int">
+		DELETE FROM user_info_licen
+		WHERE user_idx = #{userIdx}
+	</delete>
+	
+	<delete id="UserQualifiDelete" parameterType="int">
+		DELETE FROM user_info_qualifi
+		WHERE user_idx = #{userIdx}
+	</delete>
+	
+	<delete id="UserSkillDelete" parameterType="int">
+		DELETE FROM user_info_skill
+		WHERE user_idx = #{userIdx}
+	</delete>
+
+	<delete id="UserTrainingDelete" parameterType="int">
+		DELETE FROM user_info_training
+		WHERE user_idx = #{userIdx}
+	</delete>
+	
+	
+	
+	<sql id="userListWhere">
+		<where>
+			<if test="userListSearchPeriod != null and userListSearchPeriod != ''">
+				<choose>
+					<when test="userListSearchPeriod == 'userName'">
+						user_name LIKE '%${userListSearchWord}%'
+					</when>
+					<when test="userListSearchPeriod == 'userComp'">
+						user_comp LIKE '%${userListSearchWord}%'
+					</when>
+					<when test="userListSearchPeriod == 'userDept'">
+						user_dept LIKE '%${userListSearchWord}%'
+					</when>
+					<when test="userListSearchPeriod == 'careerDate'"> 
+						CAREER_DATE LIKE '${userListSearchWord}'
+					</when>
+					<when test="userListSearchPeriod == 'userAddress'">
+						user_address LIKE '%${userListSearchWord}%'
+					</when>
+				</choose>
+			</if>
+		</where>
+	</sql>
+	
+	<!-- 
+	<select id="detailList" parameterType="hashmap">
+	</select> -->
+	
+</mapper>
